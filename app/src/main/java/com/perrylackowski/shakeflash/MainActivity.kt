@@ -107,15 +107,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
-
-
-
-
-
-
-
-
 // User Interface
 @Composable
 fun FlashlightSettingsScreen(
@@ -149,9 +140,9 @@ fun FlashlightSettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // Sliders for settings
-            SettingSlider("Off Delay (minutes)", offDelay, 2.5f, 20f, onOffDelayChange)
+            SettingSlider("Off Delay (minutes)", offDelay, 0.5f, 600f, onOffDelayChange)
             SettingSlider("Cooldown (seconds)", cooldown, 0.25f, 2f, onCooldownChange)
-            SettingSlider("Sensitivity", sensitivity, 2.5f, 20f, onSensitivityChange)
+            SettingSlider("Sensitivity", sensitivity, 5f, 25f, onSensitivityChange)
 
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onResetDefaults) {
