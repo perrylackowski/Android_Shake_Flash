@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.perrylackowski.shakeflash.ui.theme.ShakeFlashTheme
+import androidx.compose.ui.tooling.preview.Preview
 
 class MainActivity : ComponentActivity() {
 
@@ -37,15 +38,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ShakeFlashTheme {
+                // State variables
                 var flashlightState by remember { mutableStateOf(false) }
-                var offDelay by remember { mutableStateOf(sharedPreferences.getFloat("offDelay", 10f)) }
-                var cooldown by remember { mutableStateOf(sharedPreferences.getFloat("cooldown", 1f)) }
-                var sensitivity by remember { mutableStateOf(sharedPreferences.getFloat("sensitivity", 10f)) }
+                var offDelay by remember { mutableFloatStateOf(sharedPreferences.getFloat("offDelay", 10f)) }
+                var cooldown by remember { mutableFloatStateOf(sharedPreferences.getFloat("cooldown", 1f)) }
+                var sensitivity by remember { mutableFloatStateOf(sharedPreferences.getFloat("sensitivity", 10f)) }
 
+                // Register sensors
                 LaunchedEffect(Unit) {
-                    sensorManager.registerListener(shakeDetector,
+                    sensorManager.registerListener(
+                        shakeDetector,
                         sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-                        SensorManager.SENSOR_DELAY_UI)
+                        SensorManager.SENSOR_DELAY_UI
+                    )
 
                     shakeDetector.setSensitivity(sensitivity)
                     shakeDetector.setCooldown((cooldown * 1000).toLong())
@@ -67,58 +72,96 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .fillMaxSize()
-                            .wrapContentSize(align = Alignment.Center)
-                    ) {
-                        Text(
-                            text = if (flashlightState) "Flashlight is ON" else "Flashlight is OFF",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = {
-                            flashlightState = flashlightUtils.toggleFlashlight(flashlightState)
-                        }) {
-                            Text(text = "Toggle Flashlight")
-                        }
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        // Sliders for settings
-                        SettingSlider("Off Delay (minutes)", offDelay, 2.5f, 20f) {
-                            offDelay = it
-                            sharedPreferences.edit().putFloat("offDelay", it).apply()
-                        }
-                        SettingSlider("Cooldown (seconds)", cooldown, 0.25f, 2f) {
-                            cooldown = it
-                            sharedPreferences.edit().putFloat("cooldown", it).apply()
-                            shakeDetector.setCooldown((it * 1000).toLong())
-                        }
-                        SettingSlider("Sensitivity", sensitivity, 2.5f, 20f) {
-                            sensitivity = it
-                            sharedPreferences.edit().putFloat("sensitivity", it).apply()
-                            shakeDetector.setSensitivity(it)
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = {
-                            offDelay = 10f
-                            cooldown = 1f
-                            sensitivity = 10f
-                            sharedPreferences.edit().clear().apply()
-                        }) {
-                            Text(text = "Reset to Defaults")
-                        }
+                // Pass state & handlers to the UI
+                FlashlightSettingsScreen(
+                    flashlightState = flashlightState,
+                    offDelay = offDelay,
+                    cooldown = cooldown,
+                    sensitivity = sensitivity,
+                    onFlashlightToggle = {
+                        flashlightState = flashlightUtils.toggleFlashlight(flashlightState)
+                    },
+                    onOffDelayChange = {
+                        offDelay = it
+                        sharedPreferences.edit().putFloat("offDelay", it).apply()
+                    },
+                    onCooldownChange = {
+                        cooldown = it
+                        sharedPreferences.edit().putFloat("cooldown", it).apply()
+                        shakeDetector.setCooldown((it * 1000).toLong())
+                    },
+                    onSensitivityChange = {
+                        sensitivity = it
+                        sharedPreferences.edit().putFloat("sensitivity", it).apply()
+                        shakeDetector.setSensitivity(it)
+                    },
+                    onResetDefaults = {
+                        offDelay = 10f
+                        cooldown = 1f
+                        sensitivity = 10f
+                        sharedPreferences.edit().clear().apply()
                     }
-                }
+                )
             }
         }
     }
 }
 
+
+
+
+
+
+
+
+
+
+// User Interface
+@Composable
+fun FlashlightSettingsScreen(
+    flashlightState: Boolean,
+    offDelay: Float,
+    cooldown: Float,
+    sensitivity: Float,
+    onFlashlightToggle: () -> Unit,
+    onOffDelayChange: (Float) -> Unit,
+    onCooldownChange: (Float) -> Unit,
+    onSensitivityChange: (Float) -> Unit,
+    onResetDefaults: () -> Unit
+) {
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = if (flashlightState) "Flashlight is ON" else "Flashlight is OFF",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onFlashlightToggle) {
+                Text(text = "Toggle Flashlight")
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Sliders for settings
+            SettingSlider("Off Delay (minutes)", offDelay, 2.5f, 20f, onOffDelayChange)
+            SettingSlider("Cooldown (seconds)", cooldown, 0.25f, 2f, onCooldownChange)
+            SettingSlider("Sensitivity", sensitivity, 2.5f, 20f, onSensitivityChange)
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onResetDefaults) {
+                Text(text = "Reset to Defaults")
+            }
+        }
+    }
+}
+
+//User Interface (repeated slider component)
 @Composable
 fun SettingSlider(label: String, value: Float, min: Float, max: Float, onValueChange: (Float) -> Unit) {
     Column(modifier = Modifier.padding(16.dp)) {
@@ -131,3 +174,22 @@ fun SettingSlider(label: String, value: Float, min: Float, max: Float, onValueCh
         )
     }
 }
+
+//// This is an empty sample of the UI so that you can view it in the previewer
+//@Preview(showBackground = true)
+//@Composable
+//fun PreviewFlashlightSettingsScreen() {
+//    ShakeFlashTheme {
+//        FlashlightSettingsScreen(
+//            flashlightState = false,
+//            offDelay = 10f,
+//            cooldown = 1f,
+//            sensitivity = 10f,
+//            onFlashlightToggle = {},
+//            onOffDelayChange = {},
+//            onCooldownChange = {},
+//            onSensitivityChange = {},
+//            onResetDefaults = {}
+//        )
+//    }
+//}
