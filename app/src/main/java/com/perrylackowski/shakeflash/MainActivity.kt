@@ -1,5 +1,10 @@
 package com.perrylackowski.shakeflash
 
+
+
+
+
+
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.Intent
