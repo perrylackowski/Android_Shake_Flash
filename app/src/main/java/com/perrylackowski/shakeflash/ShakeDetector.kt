@@ -1,20 +1,19 @@
 package com.perrylackowski.shakeflash
 
-import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.util.Log
 
-class ShakeDetector(private val context: Context) : SensorEventListener {
+class ShakeDetector : SensorEventListener {
 
-    var onShakeDetected: (() -> Unit)? = null
     private var lastShakeTime: Long = 0
     private var cooldownTime: Long = 1000 // Default cooldown in milliseconds
     private var shakeThreshold: Float = 10.0f // Default sensitivity
     private var lastDirection: Int = 0 // -1 for down, 1 for up
     private var shakePattern = mutableListOf<Int>()
     private var shakeStartTime: Long = 0
+    private val flashlightUtils = SingletonRepository.flashlightUtils
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
@@ -34,7 +33,7 @@ class ShakeDetector(private val context: Context) : SensorEventListener {
                 lastShakeTime = currentTime
                 shakePattern.clear()
                 Log.d("ShakeDetector", "Shake pattern detected! Triggering flashlight.")
-                onShakeDetected?.invoke() // Trigger flashlight toggle
+                flashlightUtils.toggleFlashlight()
             }
         }
     }
@@ -68,9 +67,11 @@ class ShakeDetector(private val context: Context) : SensorEventListener {
         }
     }
 
-    // Checks if the chop pattern (Right > Left > Right > Left) has been completed
+    // Checks if the chop pattern (Right > Left > Right > Left) has been completed.
+    // The opposite pattern is valid as well, in case your phone is facing the opposite
+    // direction in the user's hand.
     private fun isChopPatternDetected(): Boolean {
-        return shakePattern == listOf(1, -1, 1, -1)
+        return shakePattern == listOf(1, -1, 1, -1) || shakePattern == listOf(-1, 1, -1, 1)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
