@@ -1,14 +1,38 @@
 package com.perrylackowski.shakeflash
 
+import android.content.SharedPreferences
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.util.Log
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class ShakeDetector : SensorEventListener {
+    // Class references
+    private val flashlightUtils = SingletonRepository.flashlightUtils
+    private val prefs = ShakeFlashApp.sharedPreferences
+
     // Settings variables
     private var shakeThreshold: Float = 10.0f // Default sensitivity
     private var cooldownTime: Long = 1000 // Default cooldown in milliseconds
+
+
+    val maxTimeBetweenConsecutiveShakesRangeMin: Float = 0.1f
+    val maxTimeBetweenConsecutiveShakesRangeMax: Float = 1.0f
+    private val _maxTimeBetweenConsecutiveShakes = MutableStateFlow(
+        prefs.getFloat("MaxTimeBetweenConsecutiveShakes", 0.5f) ) //Default time before shaking pattern resets if no shakes are received.
+    val maxTimeBetweenConsecutiveShakes: StateFlow<Float> = _maxTimeBetweenConsecutiveShakes
+
+    fun setMaxTimeBetweenConsecutiveShakes(value: Float) {
+        _maxTimeBetweenConsecutiveShakes.value = value
+        prefs.edit().putFloat("MaxTimeBetweenConsecutiveShakes", value).apply()
+    }
+    //TODO: Still need to set the range variables in the slider from variables saved here. Maybe make a generic setting object out of this?
+    // It would give access to the StateFlow, the min and max, and the set and reset functions.
+    // Currently the 5 parts need to be individually passed into the View, and for each slider 'setting'.
+    // My fear is an object based approach for each setting my struggle to handle float vs int sliders. Though all sliders are floats at the moment, so nbd.
+
 
     // Functional variables
     private var lastShakeTime: Long = 0
@@ -16,8 +40,7 @@ class ShakeDetector : SensorEventListener {
     private var shakePattern = mutableListOf<Int>()
     private var shakeStartTime: Long = 0
 
-    // Class references
-    private val flashlightUtils = SingletonRepository.flashlightUtils
+
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
@@ -45,7 +68,7 @@ class ShakeDetector : SensorEventListener {
     // Resets the shake pattern if the shake window has been exceeded
     private fun resetShakePatternIfNeeded(currentTime: Long) {
 //        if (shakePattern.isNotEmpty() && (currentTime - shakeStartTime > 2000)) {
-        if (currentTime - shakeStartTime > 500) {
+        if (currentTime - shakeStartTime > 1000 * maxTimeBetweenConsecutiveShakes.value) { //1000 converts seconds to milliseconds
             shakePattern.clear()
             Log.d("ShakeDetector", "Shake window exceeded, resetting pattern.")
         }

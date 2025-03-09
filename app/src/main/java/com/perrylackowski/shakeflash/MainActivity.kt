@@ -41,8 +41,7 @@ import android.content.DialogInterface
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var sensorManager: SensorManager
-    private lateinit var sharedPreferences: SharedPreferences
+    private val sharedPreferences = ShakeFlashApp.sharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("ShakeFlash", "onCreate")
@@ -53,7 +52,7 @@ class MainActivity : ComponentActivity() {
         val flashlightUtils = SingletonRepository.flashlightUtils
         val stateModel = SingletonRepository.StateModel
 
-        sharedPreferences = getSharedPreferences("ShakeFlashPrefs", Context.MODE_PRIVATE)
+
 
         if (checkCameraPermission()) {
             startShakeService()
@@ -66,6 +65,7 @@ class MainActivity : ComponentActivity() {
             ShakeFlashTheme {
                 // State variables
                 val flashlightState by flashlightUtils.isFlashlightOn.collectAsState()
+                val maxTimeBetweenConsecutiveShakes by shakeDetector.maxTimeBetweenConsecutiveShakes.collectAsState()
                 var offDelay by remember { mutableFloatStateOf((sharedPreferences.getLong("offDelay", 600000)/60000f)) }
                 var cooldown by remember { mutableFloatStateOf((sharedPreferences.getLong("cooldown", 1000)/1000f)) }
                 var sensitivity by remember { mutableFloatStateOf(sharedPreferences.getFloat("sensitivity", 10f)) }
@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
                     offDelay = offDelay,
                     cooldown = cooldown,
                     sensitivity = sensitivity,
+                    maxTimeBetweenConsecutiveShakes = maxTimeBetweenConsecutiveShakes,
                     onFlashlightToggle = {
                         flashlightUtils.toggleFlashlight()
                     },
@@ -101,9 +102,12 @@ class MainActivity : ComponentActivity() {
                         sharedPreferences.edit().putFloat("sensitivity", it).apply()
                         shakeDetector.setSensitivity(it)
                     },
+                    onMaxTimeBetweenConsecutiveShakesChange = {
+                        shakeDetector.setMaxTimeBetweenConsecutiveShakes(it)
+                    },
                     onResetDefaults = {
                         sharedPreferences.edit().clear().apply()
-
+                        shakeDetector.setMaxTimeBetweenConsecutiveShakes(0.5f)
                         // Manually update state variables
                         offDelay = 10f
                         cooldown = 1f
@@ -180,10 +184,12 @@ fun FlashlightSettingsScreen(
     offDelay: Float,
     cooldown: Float,
     sensitivity: Float,
+    maxTimeBetweenConsecutiveShakes: Float,
     onFlashlightToggle: () -> Unit,
     onOffDelayChange: (Float) -> Unit,
     onCooldownChange: (Float) -> Unit,
     onSensitivityChange: (Float) -> Unit,
+    onMaxTimeBetweenConsecutiveShakesChange: (Float) -> Unit,
     onResetDefaults: () -> Unit
 ) {
         val context = LocalContext.current
@@ -248,6 +254,7 @@ fun FlashlightSettingsScreen(
 
             SettingSlider("Cooldown between toggles (seconds)", cooldown, 0.25f, 2f, onCooldownChange)
             SettingSlider("Sensitivity (Gs of shake force)", sensitivity, 5f, 25f, onSensitivityChange)
+            SettingSlider("Max time between consecutive shakes (seconds)", maxTimeBetweenConsecutiveShakes, 0.1f, 2f, onMaxTimeBetweenConsecutiveShakesChange)
 
             Spacer(modifier = Modifier.height(8.dp))
 
