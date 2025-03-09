@@ -1,9 +1,13 @@
 package com.perrylackowski.shakeflash
 
 //TODO: Pick better default ranges for the timer?
-//TODO: Revise the shake detection code so it resets based on the delay between a single shake, not a 2s duration for the entire shake pattern.
 //TODO: Figure out how to exclude .idea folder from github?
+
 //TODO: Set up a class that stores the default states for the settings variables. They are currently set in 5-6 different places.
+//TODO: Add an additional setting for maxTimeBetweenConsecutiveShakes
+
+//TODO: App fails to launch if permissions are initially granted but then taken away through the settings.
+
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -32,6 +36,8 @@ import androidx.compose.runtime.Composable
 import android.net.Uri
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.app.AlertDialog
+import android.content.DialogInterface
 
 class MainActivity : ComponentActivity() {
 
@@ -42,11 +48,10 @@ class MainActivity : ComponentActivity() {
         Log.d("ShakeFlash", "onCreate")
         super.onCreate(savedInstanceState)
 
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-
         // Use the single instances from SingletonRepository
         val shakeDetector = SingletonRepository.shakeDetector
         val flashlightUtils = SingletonRepository.flashlightUtils
+        val stateModel = SingletonRepository.StateModel
 
         sharedPreferences = getSharedPreferences("ShakeFlashPrefs", Context.MODE_PRIVATE)
 
@@ -128,11 +133,21 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
     }
 
+
     private fun requestCameraPermission() {
-        Toast.makeText(this, "Permissions needed to use this app. " +
-                "Internally, the flashlight is part of the Camera system, so it " +
-                "needs full camera permissions to work properly.", Toast.LENGTH_LONG).show()
-        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Permission Needed")
+        builder.setMessage("Permissions are needed to use this app. In Android, the flashlight " +
+                "is part of the camera's flash mechanism, so the app requires camera permissions " +
+                "in order to function. Please choose \"While using the app\" on the next screen."
+        )
+        builder.setPositiveButton("OK") { dialog, _ ->
+            dialog.dismiss() // Close the dialog when OK is clicked
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA) // Launch the permission request
+        }
+        builder.setCancelable(false) // Prevent the dialog from being dismissed without clicking OK
+        builder.create().show()
+
     }
 
     private val requestPermissionLauncher =
@@ -217,12 +232,20 @@ fun FlashlightSettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Settings",
+                text = "Flashlight Settings",
                 style = MaterialTheme.typography.titleLarge
             )
 
             // Sliders for settings
             SettingSlider("Automatically turn flashlight off after X minutes", offDelay, 0.5f, 600f, onOffDelayChange)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Chop Detection Settings",
+                style = MaterialTheme.typography.titleLarge
+            )
+
             SettingSlider("Cooldown between toggles (seconds)", cooldown, 0.25f, 2f, onCooldownChange)
             SettingSlider("Sensitivity (Gs of shake force)", sensitivity, 5f, 25f, onSensitivityChange)
 

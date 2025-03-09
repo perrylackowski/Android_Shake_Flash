@@ -9,15 +9,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class FlashlightUtils(context: Context) {
-//    var isFlashlightOn = false
-
-    private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-    private val cameraId = cameraManager.cameraIdList[0] // Use the first camera (usually the back camera)
-    private val handler = Handler(Looper.getMainLooper())
-    private var offRunnable: Runnable? = null
+    // Settings variables
     private var offDelay: Long = 600000 // Default delay: 10 minutes
     private val _isFlashlightOn = MutableStateFlow(false)
     val isFlashlightOn: StateFlow<Boolean> = _isFlashlightOn
+
+    // Functional Variables
+    private val handler = Handler(Looper.getMainLooper())
+    private var offRunnable: Runnable? = null
+
+    // References
+    private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    private val cameraId = cameraManager.cameraIdList[0] // Use the first camera (usually the back camera)
 
     fun turnOnFlashlight() {
         try {

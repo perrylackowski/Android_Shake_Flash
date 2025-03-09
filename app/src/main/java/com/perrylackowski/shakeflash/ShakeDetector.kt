@@ -6,13 +6,17 @@ import android.hardware.SensorEventListener
 import android.util.Log
 
 class ShakeDetector : SensorEventListener {
-
-    private var lastShakeTime: Long = 0
-    private var cooldownTime: Long = 1000 // Default cooldown in milliseconds
+    // Settings variables
     private var shakeThreshold: Float = 10.0f // Default sensitivity
+    private var cooldownTime: Long = 1000 // Default cooldown in milliseconds
+
+    // Functional variables
+    private var lastShakeTime: Long = 0
     private var lastDirection: Int = 0 // -1 for down, 1 for up
     private var shakePattern = mutableListOf<Int>()
     private var shakeStartTime: Long = 0
+
+    // Class references
     private val flashlightUtils = SingletonRepository.flashlightUtils
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -40,7 +44,8 @@ class ShakeDetector : SensorEventListener {
 
     // Resets the shake pattern if the shake window has been exceeded
     private fun resetShakePatternIfNeeded(currentTime: Long) {
-        if (shakePattern.isNotEmpty() && (currentTime - shakeStartTime > 2000)) {
+//        if (shakePattern.isNotEmpty() && (currentTime - shakeStartTime > 2000)) {
+        if (currentTime - shakeStartTime > 500) {
             shakePattern.clear()
             Log.d("ShakeDetector", "Shake window exceeded, resetting pattern.")
         }
@@ -59,15 +64,22 @@ class ShakeDetector : SensorEventListener {
     private fun processShakeDirection(direction: Int, currentTime: Long) {
         if (direction != lastDirection) { // Detects direction change
             lastDirection = direction
-            if (shakePattern.isEmpty()) {
-                shakeStartTime = currentTime // Set shake start time when first movement is detected
-            }
+
+//            if (shakePattern.isEmpty()) {
+//                shakeStartTime = currentTime // Set shake start time when first movement is detected
+//            }
+
+            // Reset the shake timer each time a shake is successfully detected.
+            // If the time elapsed gets above 0.5s, reset the pattern tracker.
+            // This ensures the shakes are in quick succession.
+            shakeStartTime = currentTime
+
             shakePattern.add(direction)
             if (shakePattern.size > 4) shakePattern.removeAt(0) // Keep last 4 movements
         }
     }
 
-    // Checks if the chop pattern (Right > Left > Right > Left) has been completed.
+    // Checks if the chop pattern (Right, Left, Right, Left) has been completed.
     // The opposite pattern is valid as well, in case your phone is facing the opposite
     // direction in the user's hand.
     private fun isChopPatternDetected(): Boolean {

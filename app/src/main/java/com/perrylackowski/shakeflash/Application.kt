@@ -16,6 +16,7 @@ object SingletonRepository {
         private set // Prevent modification from outside
 
     val shakeDetector: ShakeDetector by lazy { ShakeDetector() }
+    val StateModel: StateModel by lazy { StateModel() }
 
     fun initialize(context: Context) {
         flashlightUtils = FlashlightUtils(context.applicationContext) // Use application context
