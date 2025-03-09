@@ -1,38 +1,47 @@
 package com.perrylackowski.shakeflash
 
-import android.content.SharedPreferences
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.util.Log
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 class ShakeDetector : SensorEventListener {
     // Class references
     private val flashlightUtils = SingletonRepository.flashlightUtils
-    private val prefs = ShakeFlashApp.sharedPreferences
 
     // Settings variables
-    private var shakeThreshold: Float = 10.0f // Default sensitivity
-    private var cooldownTime: Long = 1000 // Default cooldown in milliseconds
+    private val shakeForceThreshold = SliderSetting(
+        key = "shakeForceThreshold",
+        label = "Shake force threshold (m/s^2, so 9.8 is one G)",
+        min = 1.0f,
+        max = 50.0f,
+        default = 16.0f
+    )
 
+    private val maxTimeBetweenConsecutiveShakes = SliderSetting(
+        key = "MaxTimeBetweenConsecutiveShakes",
+        label = "Max time between consecutive shakes (seconds)",
+        min = 0.1f,
+        max = 1.0f,
+        default = 0.5f,
+        unitConversionFactor = 1000f // Convert seconds to milliseconds
+    )
 
-    val maxTimeBetweenConsecutiveShakesRangeMin: Float = 0.1f
-    val maxTimeBetweenConsecutiveShakesRangeMax: Float = 1.0f
-    private val _maxTimeBetweenConsecutiveShakes = MutableStateFlow(
-        prefs.getFloat("MaxTimeBetweenConsecutiveShakes", 0.5f) ) //Default time before shaking pattern resets if no shakes are received.
-    val maxTimeBetweenConsecutiveShakes: StateFlow<Float> = _maxTimeBetweenConsecutiveShakes
+    private val cooldownTime = SliderSetting(
+        key = "cooldownTime",
+        label = "Cooldown between toggles (seconds)",
+        min = 0.1f,
+        max = 1f,
+        default = 0.5f,
+        unitConversionFactor = 1000f // Convert seconds to milliseconds
+    )
 
-    fun setMaxTimeBetweenConsecutiveShakes(value: Float) {
-        _maxTimeBetweenConsecutiveShakes.value = value
-        prefs.edit().putFloat("MaxTimeBetweenConsecutiveShakes", value).apply()
-    }
-    //TODO: Still need to set the range variables in the slider from variables saved here. Maybe make a generic setting object out of this?
-    // It would give access to the StateFlow, the min and max, and the set and reset functions.
-    // Currently the 5 parts need to be individually passed into the View, and for each slider 'setting'.
-    // My fear is an object based approach for each setting my struggle to handle float vs int sliders. Though all sliders are floats at the moment, so nbd.
-
+    // Put all the settings in a list that can be passed to the composable
+    val sliderSettings: List<SliderSetting<out Number>> = listOf(
+        shakeForceThreshold,
+        maxTimeBetweenConsecutiveShakes,
+        cooldownTime,
+    )
 
     // Functional variables
     private var lastShakeTime: Long = 0
@@ -48,7 +57,7 @@ class ShakeDetector : SensorEventListener {
 
             resetShakePatternIfNeeded(currentTime)
 
-            if (currentTime - lastShakeTime < cooldownTime) return // Ensure cooldown period
+            if (currentTime - lastShakeTime < cooldownTime.toCodeUnits()) return // Ensure cooldown period
 
             val direction = detectShakeDirection(event.values[0])
             if (direction != 0) {
@@ -68,7 +77,7 @@ class ShakeDetector : SensorEventListener {
     // Resets the shake pattern if the shake window has been exceeded
     private fun resetShakePatternIfNeeded(currentTime: Long) {
 //        if (shakePattern.isNotEmpty() && (currentTime - shakeStartTime > 2000)) {
-        if (currentTime - shakeStartTime > 1000 * maxTimeBetweenConsecutiveShakes.value) { //1000 converts seconds to milliseconds
+        if (currentTime - shakeStartTime > maxTimeBetweenConsecutiveShakes.toCodeUnits()) { //1000 converts seconds to milliseconds
             shakePattern.clear()
             Log.d("ShakeDetector", "Shake window exceeded, resetting pattern.")
         }
@@ -77,8 +86,8 @@ class ShakeDetector : SensorEventListener {
     // Determines movement direction based on accelerometer values
     private fun detectShakeDirection(x: Float): Int {
         return when {
-            x < -shakeThreshold -> -1
-            x > shakeThreshold -> 1
+            x < -shakeForceThreshold.state.value -> -1
+            x > shakeForceThreshold.state.value -> 1
             else -> 0
         }
     }
@@ -87,10 +96,6 @@ class ShakeDetector : SensorEventListener {
     private fun processShakeDirection(direction: Int, currentTime: Long) {
         if (direction != lastDirection) { // Detects direction change
             lastDirection = direction
-
-//            if (shakePattern.isEmpty()) {
-//                shakeStartTime = currentTime // Set shake start time when first movement is detected
-//            }
 
             // Reset the shake timer each time a shake is successfully detected.
             // If the time elapsed gets above 0.5s, reset the pattern tracker.
@@ -111,11 +116,4 @@ class ShakeDetector : SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    fun setSensitivity(value: Float) {
-        shakeThreshold = value
-    }
-
-    fun setCooldown(value: Long) {
-        cooldownTime = value
-    }
 }

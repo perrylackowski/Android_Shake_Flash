@@ -38,15 +38,6 @@ class ShakeDetectionService : Service() {
         // start the app). Going forward, we can use this knowledge to track the flashlight state
         // starting from off or false.
         flashlightUtils.turnOffFlashlight()
-        flashlightUtils.apply {
-            setOffDelay((sharedPreferences.getLong("offDelay", 600000)))
-        }
-
-        // Initialize ShakeDetector
-        shakeDetector.apply {
-            setCooldown((sharedPreferences.getLong("cooldown", 1000)))
-            setSensitivity(sharedPreferences.getFloat("sensitivity", 10f))
-        }
 
         // Register the singleton ShakeDetector with the SensorManager
         sensorManager.registerListener(

@@ -1,43 +1,45 @@
 package com.perrylackowski.shakeflash
 
-//TODO: Pick better default ranges for the timer?
 //TODO: Figure out how to exclude .idea folder from github?
-
-//TODO: Set up a class that stores the default states for the settings variables. They are currently set in 5-6 different places.
-//TODO: Add an additional setting for maxTimeBetweenConsecutiveShakes
-
 //TODO: App fails to launch if permissions are initially granted but then taken away through the settings.
+//TODO: Partially reverse the settings unit conversion so that the settings can be manipulated in
+// their desired units, but stored in their needed units, that way the conversion doesn't have to
+// happen every frame.
 
-
-import android.content.Context
-import android.content.SharedPreferences
+import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
-import android.hardware.SensorManager
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.perrylackowski.shakeflash.ui.theme.ShakeFlashTheme
-import android.Manifest
-import android.content.pm.PackageManager
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import android.util.Log
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import android.net.Uri
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import android.app.AlertDialog
-import android.content.DialogInterface
 
 class MainActivity : ComponentActivity() {
 
@@ -50,9 +52,6 @@ class MainActivity : ComponentActivity() {
         // Use the single instances from SingletonRepository
         val shakeDetector = SingletonRepository.shakeDetector
         val flashlightUtils = SingletonRepository.flashlightUtils
-        val stateModel = SingletonRepository.StateModel
-
-
 
         if (checkCameraPermission()) {
             startShakeService()
@@ -65,67 +64,18 @@ class MainActivity : ComponentActivity() {
             ShakeFlashTheme {
                 // State variables
                 val flashlightState by flashlightUtils.isFlashlightOn.collectAsState()
-                val maxTimeBetweenConsecutiveShakes by shakeDetector.maxTimeBetweenConsecutiveShakes.collectAsState()
-                var offDelay by remember { mutableFloatStateOf((sharedPreferences.getLong("offDelay", 600000)/60000f)) }
-                var cooldown by remember { mutableFloatStateOf((sharedPreferences.getLong("cooldown", 1000)/1000f)) }
-                var sensitivity by remember { mutableFloatStateOf(sharedPreferences.getFloat("sensitivity", 10f)) }
-
                 // Pass state & handlers to the UI
                 FlashlightSettingsScreen(
+                    shakeDetectionSliders = shakeDetector.sliderSettings,
+                    flashlightUtilsSliders = flashlightUtils.sliderSettings,
                     flashlightState = flashlightState,
-                    offDelay = offDelay,
-                    cooldown = cooldown,
-                    sensitivity = sensitivity,
-                    maxTimeBetweenConsecutiveShakes = maxTimeBetweenConsecutiveShakes,
                     onFlashlightToggle = {
                         flashlightUtils.toggleFlashlight()
                     },
-                    onOffDelayChange = {
-                        // Update the UI
-                        offDelay = it
-                        // Convert from minutes to milliseconds
-                        val offDelayInMillSecs = (it * 60000f).toLong()
-                        // Update the preferences in storage
-                        sharedPreferences.edit().putLong("offDelay", offDelayInMillSecs).apply()
-                        // Update the private variable currently used by the running service.
-                        flashlightUtils.setOffDelay(offDelayInMillSecs)
-                    },
-                    onCooldownChange = {
-                        cooldown = it
-                        //Convert from seconds to milliseconds
-                        val cooldownInMillSecs = (it * 1000f).toLong()
-                        sharedPreferences.edit().putLong("cooldown", cooldownInMillSecs).apply()
-                        shakeDetector.setCooldown(cooldownInMillSecs)
-                    },
-                    onSensitivityChange = {
-                        sensitivity = it
-                        sharedPreferences.edit().putFloat("sensitivity", it).apply()
-                        shakeDetector.setSensitivity(it)
-                    },
-                    onMaxTimeBetweenConsecutiveShakesChange = {
-                        shakeDetector.setMaxTimeBetweenConsecutiveShakes(it)
-                    },
                     onResetDefaults = {
                         sharedPreferences.edit().clear().apply()
-                        shakeDetector.setMaxTimeBetweenConsecutiveShakes(0.5f)
-                        // Manually update state variables
-                        offDelay = 10f
-                        cooldown = 1f
-                        sensitivity = 10f
-
-                        // Manually update SharedPreferences
-                        sharedPreferences.edit()
-                            .putLong("offDelay", 600000) //10 min
-                            .putLong("cooldown", 1000) //1 sec
-                            .putFloat("sensitivity", 10f) //10 G's
-                            .apply()
-
-                        // Manually update the service instances
-                        flashlightUtils.setOffDelay(600000)
-                        shakeDetector.setCooldown(1000)
-                        shakeDetector.setSensitivity(10f)
-
-                        Log.d("MainActivity", "Defaults reset: OffDelay=10, Cooldown=1, Sensitivity=10")
+                        shakeDetector.sliderSettings.forEach { it.reset() }
+                        Log.d("MainActivity", "Settings reset to defaults")
                     }
                 )
             }
@@ -136,7 +86,6 @@ class MainActivity : ComponentActivity() {
         return ContextCompat.checkSelfPermission(this,
             Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
     }
-
 
     private fun requestCameraPermission() {
         val builder = AlertDialog.Builder(this)
@@ -181,15 +130,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FlashlightSettingsScreen(
     flashlightState: Boolean,
-    offDelay: Float,
-    cooldown: Float,
-    sensitivity: Float,
-    maxTimeBetweenConsecutiveShakes: Float,
     onFlashlightToggle: () -> Unit,
-    onOffDelayChange: (Float) -> Unit,
-    onCooldownChange: (Float) -> Unit,
-    onSensitivityChange: (Float) -> Unit,
-    onMaxTimeBetweenConsecutiveShakesChange: (Float) -> Unit,
+    shakeDetectionSliders: List<SliderSetting<out Number>>,
+    flashlightUtilsSliders: List<SliderSetting<out Number>>,
     onResetDefaults: () -> Unit
 ) {
         val context = LocalContext.current
@@ -218,7 +161,7 @@ fun FlashlightSettingsScreen(
 
             Text(
                 text = "Holding your phone in your hand, swing your arm in a chopping motion " +
-                        "two times in a row to toggle the flashlight.",
+                        "two times to enable the flashlight.",
                 style = MaterialTheme.typography.bodyMedium
             )
 
@@ -242,19 +185,22 @@ fun FlashlightSettingsScreen(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            // Sliders for settings
-            SettingSlider("Automatically turn flashlight off after X minutes", offDelay, 0.5f, 600f, onOffDelayChange)
+            // Sliders for flashlight settings
+            flashlightUtilsSliders.forEach { slider ->
+                SettingSlider(slider)
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Chop Detection Settings",
+                text = "Shake Detection Settings",
                 style = MaterialTheme.typography.titleLarge
             )
 
-            SettingSlider("Cooldown between toggles (seconds)", cooldown, 0.25f, 2f, onCooldownChange)
-            SettingSlider("Sensitivity (Gs of shake force)", sensitivity, 5f, 25f, onSensitivityChange)
-            SettingSlider("Max time between consecutive shakes (seconds)", maxTimeBetweenConsecutiveShakes, 0.1f, 2f, onMaxTimeBetweenConsecutiveShakesChange)
+            // Sliders for shake detection settings
+            shakeDetectionSliders.forEach { slider ->
+                SettingSlider(slider)
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -278,7 +224,7 @@ fun FlashlightSettingsScreen(
                     Uri.parse("https://buymeacoffee.com/perrylackowski"))
                 context.startActivity(intent)
             }) {
-                Text(text = "Support me  ☕")
+                Text(text = "Buy me a coffee  ☕")
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -286,22 +232,23 @@ fun FlashlightSettingsScreen(
     }
 }
 
-//User Interface (repeated slider component)
 @Composable
-fun SettingSlider(label: String, value: Float, min: Float, max: Float, onValueChange: (Float) -> Unit) {
+fun <T : Number> SettingSlider(setting: SliderSetting<T>) {
+    val value by setting.state.collectAsState()
+
     Column(modifier = Modifier.padding(16.dp)) {
-        Text(text = "$label: ${"%.2f".format(value)}")
+        Text(text = "${setting.label}: ${"%.2f".format(value)}")
         Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = min..max,
+            value = setting.reverser(value),
+            onValueChange = { setting.setValue(setting.converter(it)) },
+            valueRange = setting.reverser(setting.min)..setting.reverser(setting.max),
             modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
 /*
-// This is an empty sample of the UI so that you can view it in the previewer
+// This WAS an empty sample of the UI so that you can view it in the previewer
 @Preview(showBackground = true)
 @Composable
 fun PreviewFlashlightSettingsScreen() {
