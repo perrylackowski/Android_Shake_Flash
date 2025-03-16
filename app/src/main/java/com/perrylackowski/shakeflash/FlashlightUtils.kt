@@ -1,17 +1,29 @@
 package com.perrylackowski.shakeflash
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraManager
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.lang.ref.WeakReference
+import android.Manifest
 
 class FlashlightUtils(context: Context) {
     // References
-    private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    private val weakContext = WeakReference(context)
+
+    private val cameraManager = weakContext.get()?.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private val cameraId = cameraManager.cameraIdList[0] // Use the first camera (usually the back camera)
+
+//    private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+//    private val cameraId = cameraManager.cameraIdList[0]
 
     // Settings variables
     private val _isFlashlightOn = MutableStateFlow(false)
@@ -57,10 +69,20 @@ class FlashlightUtils(context: Context) {
     }
 
     fun toggleFlashlight() {
-        if (_isFlashlightOn.value) {
-            turnOffFlashlight()
-        } else {
-            turnOnFlashlight()
+        val context = weakContext.get() ?: return
+        // Check camera permission
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(context, "Camera permission has been revoked. Flashlight cannot be toggled.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            if (_isFlashlightOn.value) {
+                turnOffFlashlight()
+            } else {
+                turnOnFlashlight()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "An error occurred while toggling the flashlight.", Toast.LENGTH_SHORT).show()
         }
     }
 

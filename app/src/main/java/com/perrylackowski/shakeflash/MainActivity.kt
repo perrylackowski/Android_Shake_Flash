@@ -2,9 +2,7 @@ package com.perrylackowski.shakeflash
 
 //TODO: Figure out how to exclude .idea folder from github?
 //TODO: App fails to launch if permissions are initially granted but then taken away through the settings.
-//TODO: Partially reverse the settings unit conversion so that the settings can be manipulated in
-// their desired units, but stored in their needed units, that way the conversion doesn't have to
-// happen every frame.
+
 
 import android.Manifest
 import android.app.AlertDialog
@@ -75,6 +73,7 @@ class MainActivity : ComponentActivity() {
                     onResetDefaults = {
                         sharedPreferences.edit().clear().apply()
                         shakeDetector.sliderSettings.forEach { it.reset() }
+                        flashlightUtils.sliderSettings.forEach { it.reset() }
                         Log.d("MainActivity", "Settings reset to defaults")
                     }
                 )
@@ -234,7 +233,7 @@ fun FlashlightSettingsScreen(
 
 @Composable
 fun <T : Number> SettingSlider(setting: SliderSetting<T>) {
-    val value by setting.state.collectAsState()
+    val value by setting.preferredState.collectAsState()
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text(text = "${setting.label}: ${"%.2f".format(value)}")
@@ -246,6 +245,7 @@ fun <T : Number> SettingSlider(setting: SliderSetting<T>) {
         )
     }
 }
+
 
 /*
 // This WAS an empty sample of the UI so that you can view it in the previewer

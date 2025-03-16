@@ -48,15 +48,15 @@ class ShakeDetectionService : Service() {
 
         startForeground(NOTIFICATION_ID, createNotification())
         // Acquire a wake lock to keep sensors active
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ShakeFlash:WakeLock")
-        wakeLock?.acquire() //No timeout since it should run indefinitely, until the app is deleted.
+//        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+//        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ShakeFlash:WakeLock")
+//        wakeLock?.acquire() //No timeout since it should run indefinitely, until the app is deleted.
     }
 
     override fun onDestroy() {
         super.onDestroy()
         sensorManager.unregisterListener(shakeDetector) // Unregister sensor to free resources
-        wakeLock?.release()
+//        wakeLock?.release()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

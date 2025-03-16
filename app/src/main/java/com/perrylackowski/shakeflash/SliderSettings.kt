@@ -8,9 +8,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+// This is the bare-bones class that is used to define each setting that will appear in the UI.
+// Settings are then instantiated in the ShakeDetector and FlashlightUtils models.
 data class SliderSetting<T : Number>(
+    private val key: String,    //string for getting sharedPreferences key:value pair
+    val label: String,  //Label that appears in the UI
+    val min: T,
+    val max: T,
+    val default: T,
+    val unitConversionFactor: Float = 1f,   //Multiply desired UI units (min or sec) by this factor to get code-required units (millisec)
+    val converter: (Float) -> T = { it as T },       // Default: No conversion
+    val reverser: (T) -> Float = { it.toFloat() },   // Default: No conversion
+) {
     /* EXAMPLES
-        val maxTimeBetweenConsecutiveShakes = SliderSetting(
+    val maxTimeBetweenConsecutiveShakes = SliderSetting(
         label = "Max time between consecutive shakes (seconds)",
         min = 0.1f,
         max = 1.0f,
@@ -32,53 +43,40 @@ data class SliderSetting<T : Number>(
         converter = { it.toInt() }, // Convert `Float` to `Int`
         reverser = { it.toFloat() } // Convert `Int` to `Float`
     )
-
-    //Example of unit conversion
-    val maxTimeInactivity = SliderSetting(
-    label = "Max inactivity time (minutes)",
-    min = 0.1f, // 6 seconds in minutes
-    max = 10f, // 10 minutes
-    default = 1f, // 1 minute
-    key = "MaxTimeInactivity",
-    prefs = prefs,
-    toDisplay = { it / 60f }, // Convert milliseconds to minutes
-    fromDisplay = { it * 60f } // Convert minutes to milliseconds
-    )
-
     */
 
-    private val key: String,
-    val label: String,
-    val min: T,
-    val max: T,
-    val default: T,
-    val unitConversionFactor: Float = 1f,
-    val converter: (Float) -> T = { it as T },       // Default: No conversion
-    val reverser: (T) -> Float = { it.toFloat() },   // Default: No conversion
-//    val toDisplay: (T) -> T = { it },               // Default: No transformation
-//    val fromDisplay: (T) -> T = { it }  ,            // Default: No transformation
-) {
     private val prefs = ShakeFlashApp.sharedPreferences
-    private val _state = MutableStateFlow(prefs.getFloat(key, reverser(default)))
 
-    val state: StateFlow<T> = _state.map { converter(it) }.stateIn(
+    private val _preferredState = MutableStateFlow(prefs.getFloat(key, reverser(default)))
+    private val _convertedState = MutableStateFlow(
+        reverser(converter(_preferredState.value)) * unitConversionFactor
+    )
+
+    // The preferred state might be in minutes, while the converted state might be in milliseconds
+    val preferredState: StateFlow<T> = _preferredState.map { converter(it) }.stateIn(
         scope = CoroutineScope(Dispatchers.Main),
         started = SharingStarted.Lazily,
         initialValue = default
     )
+
+    val convertedState: StateFlow<Float> = _convertedState
+
     fun setValue(value: T) {
-        _state.value = reverser(value)
-        prefs.edit().putFloat(key, reverser(value)).apply()
+        val preferredValue = reverser(value)
+        _preferredState.value = preferredValue
+        _convertedState.value = preferredValue * unitConversionFactor
+        prefs.edit().putFloat(key, preferredValue).apply()
     }
+
     fun reset() {
         setValue(default)
     }
-    fun toCodeUnits(): Float {
-        return state.value.toFloat() * unitConversionFactor
+
+    // The model functions will use this to retrieve the current settings.
+    fun toCodeUnits(): Float { //getConvertedValue
+        return _convertedState.value
     }
-
 }
-
 
 
 

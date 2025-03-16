@@ -76,18 +76,19 @@ class ShakeDetector : SensorEventListener {
 
     // Resets the shake pattern if the shake window has been exceeded
     private fun resetShakePatternIfNeeded(currentTime: Long) {
-//        if (shakePattern.isNotEmpty() && (currentTime - shakeStartTime > 2000)) {
-        if (currentTime - shakeStartTime > maxTimeBetweenConsecutiveShakes.toCodeUnits()) { //1000 converts seconds to milliseconds
-            shakePattern.clear()
-            Log.d("ShakeDetector", "Shake window exceeded, resetting pattern.")
+        if (shakePattern.isNotEmpty()) {
+            if (currentTime - shakeStartTime > maxTimeBetweenConsecutiveShakes.toCodeUnits()) { //1000 converts seconds to milliseconds
+                shakePattern.clear()
+                Log.d("ShakeDetector", "Shake window exceeded, resetting pattern.")
+            }
         }
     }
 
     // Determines movement direction based on accelerometer values
     private fun detectShakeDirection(x: Float): Int {
         return when {
-            x < -shakeForceThreshold.state.value -> -1
-            x > shakeForceThreshold.state.value -> 1
+            x < -shakeForceThreshold.toCodeUnits() -> -1
+            x > shakeForceThreshold.toCodeUnits() -> 1
             else -> 0
         }
     }
