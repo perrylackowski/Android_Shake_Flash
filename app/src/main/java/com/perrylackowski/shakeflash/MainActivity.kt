@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
         val shakeDetector = SingletonRepository.shakeDetector
         val flashlightUtils = SingletonRepository.flashlightUtils
 
+        
         if (checkCameraPermission()) {
             startShakeService()
         } else {
