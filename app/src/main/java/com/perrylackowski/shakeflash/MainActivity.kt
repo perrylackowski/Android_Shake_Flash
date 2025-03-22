@@ -1,8 +1,6 @@
 package com.perrylackowski.shakeflash
 
-//TODO: Figure out how to exclude .idea folder from github?
-//TODO: App fails to launch if permissions are initially granted but then taken away through the settings.
-
+//TODO: Test ideas for improving battery life further.
 
 import android.Manifest
 import android.app.AlertDialog
@@ -51,7 +49,6 @@ class MainActivity : ComponentActivity() {
         val shakeDetector = SingletonRepository.shakeDetector
         val flashlightUtils = SingletonRepository.flashlightUtils
 
-        
         if (checkCameraPermission()) {
             startShakeService()
         } else {
