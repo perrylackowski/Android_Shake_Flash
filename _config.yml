@@ -11,7 +11,7 @@ description: Shake Flash for Android
 # baseurl: "/"
 
 # Theme (optional, but you can use a built-in theme or a custom one)
-theme: jekyll-theme-hyde
+theme: jekyll-theme-Hyde
 
 # Permalink settings (optional)
 permalink: pretty
