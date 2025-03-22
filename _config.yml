@@ -2,7 +2,7 @@
 
 # Site title and description
 title: Shake Flash for Android
-description: This is the description of my site.
+description: Shake Flash for Android
 
 # URL of the site (useful for generating absolute URLs)
 # url: "https://perrylackowski.github.io"  # Replace with your actual GitHub Pages URL
@@ -11,7 +11,7 @@ description: This is the description of my site.
 # baseurl: "/"
 
 # Theme (optional, but you can use a built-in theme or a custom one)
-theme: jekyll-theme-slate
+theme: jekyll-theme-hyde
 
 # Permalink settings (optional)
 permalink: pretty
