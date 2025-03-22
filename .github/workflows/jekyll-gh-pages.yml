@@ -35,8 +35,6 @@ jobs:
         with:
           source: ./
           destination: ./_site
-      - name: Copy Privacy Policy to _site  # Copies the privacy policy into _site directory
-        run: cp privacypolicy.html ./_site/  # Copies the privacy policy into _site directory
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
