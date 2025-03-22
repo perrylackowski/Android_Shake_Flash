@@ -1,0 +1,27 @@
+# _config.yml
+
+# Site title and description
+title: Shake Flash for Android
+description: Shake Flash for Android
+
+# URL of the site (useful for generating absolute URLs)
+# url: "https://perrylackowski.github.io"  # Replace with your actual GitHub Pages URL
+
+# Set the baseurl to / if you are deploying to a root domain
+# baseurl: "/"
+
+# Theme (optional, but you can use a built-in theme or a custom one)
+remote_theme: pages-themes/minimal@v0.2.0
+
+# Permalink settings (optional)
+permalink: pretty
+
+# Add any plugins if needed (optional)
+plugins:
+  - jekyll-seo-tag
+  - jekyll-remote-theme
+
+# Collections (if you have custom collections like blog posts)
+collections:
+  posts:
+    output: true
